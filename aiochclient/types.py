@@ -1,3 +1,4 @@
+import ast
 import datetime as dt
 import json
 import re
@@ -304,9 +305,13 @@ class MapType(BaseType):
         self.key_type = what_py_type(tps[:comma_index], container=True)
         self.value_type = what_py_type(tps[comma_index + 1 :], container=True)
 
+    @classmethod
+    def decode(cls, val: bytes) -> str:
+        return val.decode()
+
     def p_type(self, string: Any) -> dict:
         if isinstance(string, str):
-            string = json.loads(string.replace("'", '"'))
+            string = ast.literal_eval(string.replace('NULL', 'None'))
         return {
             self.key_type.p_type(key): self.value_type.p_type(val)
             for key, val in string.items()
@@ -314,7 +319,7 @@ class MapType(BaseType):
 
     @staticmethod
     def unconvert(value) -> bytes:
-        return json2ch(value, dumps=json.dumps).replace('"', "'").encode()
+        return json2ch(value, dumps=str).encode()
 
 
 class ArrayType(BaseType):
@@ -336,7 +341,7 @@ class ArrayType(BaseType):
 class NullableType(BaseType):
 
     __slots__ = ("name", "type")
-    NULLABLE = {r"\N", "NULL"}
+    NULLABLE = {r"\N", "NULL", None}
 
     def __init__(self, name: str, container: bool = False, **kwargs):
         super().__init__(name, **kwargs)
